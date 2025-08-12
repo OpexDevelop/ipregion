@@ -1,0 +1,40 @@
+{
+  "name": "ipregion",
+  "version": "1.0.0",
+  "description": "Determines your IP geolocation using various GeoIP services and popular websites.",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "ipregion": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opexdevelop/ipregion.git"
+  },
+  "keywords": [
+    "ip",
+    "geoip",
+    "geolocation",
+    "region",
+    "country",
+    "proxy",
+    "cli"
+  ],
+  "author": "opexdevelop",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/opexdevelop/ipregion/issues"
+  },
+  "homepage": "https://github.com/opexdevelop/ipregion#readme",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "ora": "^8.0.1",
+    "socks-proxy-agent": "^8.0.4",
+    "yargs": "^17.7.2"
+  }
+}
