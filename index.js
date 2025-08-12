@@ -276,7 +276,7 @@ function printCliOutput(data) {
     const { ipv4, ipv6, asn, results, mostProbable } = data;
 
     console.log(chalk.gray(`Made with ${chalk.red('<3')} by opexdevelop`));
-    console.log(chalk.gray('https://github.com/opexdevelop/ipregion\n'));
+    console.log(chalk.gray('https://github.com/opexdevelop/ipregion-js\n'));
 
     if (ipv4) console.log(`${chalk.cyan.bold('IPv4:')} ${chalk.bold(ipv4)}`);
     if (ipv6) console.log(`${chalk.cyan.bold('IPv6:')} ${chalk.bold(ipv6)}`);
@@ -424,7 +424,7 @@ if (import.meta.url.startsWith('file://') && process.argv[1] === new URL(import.
         .option('6', { alias: 'ipv6', type: 'boolean', describe: 'Test only IPv6' })
         .option('p', { alias: 'proxy', type: 'string', describe: 'Use SOCKS5 proxy (format: host:port)' })
         .option('i', { alias: 'interface', type: 'string', describe: 'Use specified network interface (e.g. eth1)' })
-        .epilog('For more information, visit https://github.com/opexdevelop/ipregion')
+        .epilog('For more information, visit https://github.com/opexdevelop/ipregion-js')
         .help()
         .argv;
 
