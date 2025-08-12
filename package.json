@@ -1,6 +1,6 @@
 {
   "name": "ipregion",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Determines your IP geolocation using various GeoIP services and popular websites.",
   "main": "index.js",
   "type": "module",
