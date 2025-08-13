@@ -18,9 +18,10 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'npm'
+          cache-dependency-path: '**/package.json'  # Изменяем путь кеша
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install  # Используем install вместо ci
 
       # --- Публикация в npmjs.org ---
       - name: Setup .npmrc for npmjs.org
