@@ -1,55 +1,45 @@
 {
-  "name": "ipregion",
+  "name": "ipregion-js",
   "version": "1.0.0",
-  "description": "IP Region Detection Tool - Node.js port of the original bash script",
+  "description": "Node.js wrapper for ipregion bash script - determines IP geolocation using various GeoIP services",
   "type": "module",
-  "main": "ipregion.mjs",
+  "main": "index.js",
   "bin": {
-    "ipregion": "./ipregion.mjs"
+    "ipregion": "./index.js"
   },
   "scripts": {
-    "start": "node ipregion.mjs",
-    "test": "node ipregion.mjs -v",
-    "check-ip": "node ipregion.mjs",
-    "check-google": "node ipregion.mjs 8.8.8.8",
-    "json-output": "node ipregion.mjs -j",
-    "help": "node ipregion.mjs --help"
+    "test": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opexdevelop/ipregion-js.git"
   },
   "keywords": [
     "ip",
     "geolocation",
-    "region",
-    "detection",
+    "geoip",
+    "ipregion",
     "vpn",
     "proxy",
     "cdn",
-    "network",
-    "geoip",
-    "ip-lookup"
+    "ipv4",
+    "ipv6"
   ],
-  "author": "AI",
+  "author": "OpexDevelop",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/opexdevelop/ipregion-js/issues"
+  },
+  "homepage": "https://github.com/opexdevelop/ipregion-js#readme",
   "engines": {
     "node": ">=16.0.0"
   },
-  "dependencies": {},
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vernette/ipregion"
-  },
-  "bugs": {
-    "url": "https://github.com/vernette/ipregion/issues"
-  },
-  "homepage": "https://github.com/vernette/ipregion#readme",
   "os": [
-    "linux",
-    "darwin",
-    "win32"
+    "!win32"
   ],
-  "preferGlobal": true,
   "files": [
-    "ipregion.mjs",
+    "index.js",
+    "ipregion.sh",
     "README.md",
     "LICENSE"
   ]
