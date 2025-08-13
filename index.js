@@ -3,286 +3,202 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { access, constants } from 'fs/promises';
+import { promises as fs } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const SCRIPT_PATH = join(__dirname, 'ipregion.sh');
-
-/**
- * Parse command line arguments
- */
-function parseArgs(args) {
-  const options = {
-    verbose: false,
-    group: null,
-    timeout: null,
-    ipv4: false,
-    ipv6: false,
-    proxy: null,
-    interface: null,
-    json: false,
-    help: false
-  };
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    
-    if (arg === '--help' || arg === '-h') {
-      options.help = true;
-    } else if (arg === '--verbose' || arg === '-v') {
-      options.verbose = true;
-    } else if (arg === '--json' || arg === '-j') {
-      options.json = true;
-    } else if (arg === '--ipv4' || arg === '-4') {
-      options.ipv4 = true;
-    } else if (arg === '--ipv6' || arg === '-6') {
-      options.ipv6 = true;
-    } else if (arg === '--group' || arg === '-g') {
-      if (i + 1 < args.length) {
-        options.group = args[++i];
-      }
-    } else if (arg === '--timeout' || arg === '-t') {
-      if (i + 1 < args.length) {
-        options.timeout = parseInt(args[++i]);
-      }
-    } else if (arg === '--proxy' || arg === '-p') {
-      if (i + 1 < args.length) {
-        options.proxy = args[++i];
-      }
-    } else if (arg === '--interface' || arg === '-i') {
-      if (i + 1 < args.length) {
-        options.interface = args[++i];
-      }
-    }
-  }
-
-  return options;
-}
-
-/**
- * Execute ipregion.sh script with given options
- */
-async function executeScript(options = {}) {
-  // Check if script exists
-  try {
-    await access(SCRIPT_PATH, constants.R_OK | constants.X_OK);
-  } catch (error) {
-    throw new Error(`ipregion.sh not found or not executable at ${SCRIPT_PATH}`);
-  }
-
+// Default export function for module usage
+export default async function ipregion(options = {}) {
   const args = [];
   
-  // Always use JSON output when called as a module
-  const isModule = !options.cliMode;
-  if (isModule || options.json) {
-    args.push('--json');
-  }
+  // Always use JSON output for programmatic usage
+  args.push('--json');
   
+  // Add options as command line arguments
   if (options.verbose) args.push('--verbose');
+  if (options.group) args.push('--group', options.group);
+  if (options.timeout) args.push('--timeout', options.timeout.toString());
   if (options.ipv4) args.push('--ipv4');
   if (options.ipv6) args.push('--ipv6');
-  if (options.help) args.push('--help');
+  if (options.proxy) args.push('--proxy', options.proxy);
+  if (options.interface) args.push('--interface', options.interface);
   
-  if (options.group) {
-    args.push('--group', options.group);
-  }
+  const result = await runScript(args);
   
-  if (options.timeout) {
-    args.push('--timeout', options.timeout.toString());
-  }
-  
-  if (options.proxy) {
-    args.push('--proxy', options.proxy);
-  }
-  
-  if (options.interface) {
-    args.push('--interface', options.interface);
-  }
-
-  return new Promise((resolve, reject) => {
-    const process = spawn(SCRIPT_PATH, args, {
-      env: { ...process.env },
-      shell: false
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    process.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    process.on('error', (error) => {
-      reject(new Error(`Failed to execute ipregion.sh: ${error.message}`));
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0 && code !== null) {
-        if (stderr) {
-          reject(new Error(`ipregion.sh failed: ${stderr}`));
-        } else {
-          reject(new Error(`ipregion.sh exited with code ${code}`));
-        }
-      } else {
-        resolve(stdout);
-      }
-    });
-  });
-}
-
-/**
- * Parse JSON output from ipregion.sh
- */
-function parseJsonOutput(output) {
-  try {
-    // Find JSON in output (might have other text before/after)
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    return JSON.parse(output);
-  } catch (error) {
-    throw new Error(`Failed to parse JSON output: ${error.message}`);
-  }
-}
-
-/**
- * Calculate most likely country from all service results
- */
-function calculateMostLikelyCountry(results) {
+  // Calculate most likely country
   const countryCounts = {};
   
-  // Count occurrences from all service groups
+  // Count countries from all service groups
   ['primary', 'custom', 'cdn'].forEach(group => {
-    if (results[group] && Array.isArray(results[group])) {
-      results[group].forEach(service => {
-        // Get country code from IPv4 and IPv6 results
-        ['ipv4', 'ipv6'].forEach(ipType => {
-          if (service[ipType] && service[ipType] !== 'null' && service[ipType] !== null) {
-            let country = service[ipType];
-            
-            // For CDN services, extract country code from format like "NL (AMS)"
-            if (group === 'cdn') {
-              // Extract the first 2 uppercase letters (country code)
-              const match = country.match(/^([A-Z]{2})/);
-              if (match) {
-                country = match[1];
-              } else {
-                // Skip if we can't extract a valid country code
-                return;
-              }
-            }
-            
-            // Only count valid 2-letter country codes
-            if (/^[A-Z]{2}$/.test(country)) {
-              countryCounts[country] = (countryCounts[country] || 0) + 1;
-            }
+    if (result.results && result.results[group]) {
+      result.results[group].forEach(service => {
+        if (service.ipv4) {
+          // Extract country code (first 2 letters) from strings like "NL (AMS)" or just "NL"
+          const countryMatch = service.ipv4.match(/^([A-Z]{2})/);
+          if (countryMatch) {
+            const country = countryMatch[1];
+            countryCounts[country] = (countryCounts[country] || 0) + 1;
           }
-        });
+        }
+        if (service.ipv6) {
+          // Extract country code (first 2 letters) from strings like "NL (AMS)" or just "NL"
+          const countryMatch = service.ipv6.match(/^([A-Z]{2})/);
+          if (countryMatch) {
+            const country = countryMatch[1];
+            countryCounts[country] = (countryCounts[country] || 0) + 1;
+          }
+        }
       });
     }
   });
   
-  // Find the most common country
-  let mostLikely = null;
+  // Find most frequent country
+  let mostLikelyCountry = null;
   let maxCount = 0;
-  
   for (const [country, count] of Object.entries(countryCounts)) {
     if (count > maxCount) {
       maxCount = count;
-      mostLikely = country;
+      mostLikelyCountry = country;
     }
   }
   
-  return mostLikely;
+  result.mostLikelyCountry = mostLikelyCountry;
+  
+  return result;
 }
 
-/**
- * Main ipregion function
- */
-export async function ipregion(options = {}) {
+// Named export for convenience
+export { ipregion };
+
+// Run the bash script
+async function runScript(args = []) {
+  const scriptPath = join(__dirname, 'ipregion.sh');
+  
+  // Check if script exists
   try {
-    const output = await executeScript(options);
-    const result = parseJsonOutput(output);
-    
-    // Add most likely country based on all results
-    if (result.results) {
-      result.mostLikelyCountry = calculateMostLikelyCountry(result.results);
-    }
-    
-    return result;
+    await fs.access(scriptPath);
   } catch (error) {
-    throw error;
+    throw new Error(`ipregion.sh not found in ${__dirname}. Please ensure the script is present.`);
   }
+  
+  return new Promise((resolve, reject) => {
+    const proc = spawn('bash', [scriptPath, ...args], {
+      stdio: ['inherit', 'pipe', 'pipe'],
+      env: { ...process.env }
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Script exited with code ${code}: ${stderr}`));
+        return;
+      }
+      
+      // Try to parse JSON output
+      if (args.includes('--json')) {
+        try {
+          const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            resolve(parsed);
+          } else {
+            reject(new Error('No JSON output found'));
+          }
+        } catch (error) {
+          reject(new Error(`Failed to parse JSON output: ${error.message}`));
+        }
+      } else {
+        // Return raw output for CLI mode
+        resolve(stdout);
+      }
+    });
+    
+    proc.on('error', (error) => {
+      reject(error);
+    });
+  });
 }
 
-// Export as default too
-export default ipregion;
-
-// CLI mode
-const args = process.argv || [];
-const isCliMode = args[1] === fileURLToPath(import.meta.url);
-
-if (isCliMode) {
-  const options = parseArgs(args.slice(2));
-  
-  if (options.help) {
-    console.log(`
-IPRegion.js - Node.js wrapper for ipregion.sh
-
-Usage: ipregion [options]
-
-Options:
-  -h, --help              Show this help message
-  -v, --verbose           Enable verbose output
-  -j, --json             Output in JSON format
-  -g, --group <group>    Service group (primary, custom, cdn, all)
-  -t, --timeout <sec>    Request timeout in seconds
-  -4, --ipv4             Test only IPv4
-  -6, --ipv6             Test only IPv6
-  -p, --proxy <host:port> Use SOCKS5 proxy
-  -i, --interface <name>  Use specific network interface
-
-Examples:
-  ipregion                     # Check all services
-  ipregion --group primary     # Check only GeoIP services
-  ipregion --ipv4 --json      # Check IPv4 only, output as JSON
-  ipregion --proxy 127.0.0.1:1080  # Use SOCKS5 proxy
-`);
-    process.exit(0);
-  }
-  
-  // Mark as CLI mode to handle output differently
-  options.cliMode = true;
-  
-  // Execute script directly for CLI mode
-  executeScript(options)
-    .then(output => {
-      // For CLI mode, if not JSON, output as-is
-      if (!options.json) {
-        console.log(output);
+// CLI handler
+async function cli() {
+  try {
+    const args = process.argv.slice(2);
+    
+    // If no args or help requested, pass through to the script
+    if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+      const result = await runScript(args);
+      if (typeof result === 'string') {
+        process.stdout.write(result);
       } else {
-        // If JSON mode, add mostLikelyCountry
-        try {
-          const result = parseJsonOutput(output);
-          if (result.results) {
-            result.mostLikelyCountry = calculateMostLikelyCountry(result.results);
+        console.log(JSON.stringify(result, null, 2));
+      }
+      process.exit(0);
+    }
+    
+    // Check if JSON output is requested for CLI
+    const isJson = args.includes('--json');
+    
+    // Run the script with provided arguments
+    const result = await runScript(args);
+    
+    if (typeof result === 'string') {
+      process.stdout.write(result);
+    } else {
+      // If JSON was requested and we have an object, add mostLikelyCountry
+      if (isJson && result.results) {
+        const countries = [];
+        for (const group of Object.values(result.results)) {
+          for (const service of group) {
+            if (service.ipv4 && service.ipv4.length === 2) {
+              countries.push(service.ipv4);
+            }
+            if (service.ipv6 && service.ipv6.length === 2) {
+              countries.push(service.ipv6);
+            }
           }
-          console.log(JSON.stringify(result, null, 2));
-        } catch (error) {
-          // If can't parse, output as-is
-          console.log(output);
+        }
+        
+        if (countries.length > 0) {
+          const countMap = {};
+          for (const country of countries) {
+            countMap[country] = (countMap[country] || 0) + 1;
+          }
+          
+          let maxCount = 0;
+          let mostLikely = null;
+          for (const [country, count] of Object.entries(countMap)) {
+            if (count > maxCount) {
+              maxCount = count;
+              mostLikely = country;
+            }
+          }
+          
+          result.mostLikelyCountry = mostLikely;
+        } else {
+          result.mostLikelyCountry = null;
         }
       }
-    })
-    .catch(error => {
-      console.error('Error:', error.message);
-      process.exit(1);
-    });
+      
+      console.log(JSON.stringify(result, null, 2));
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
+  }
+}
+
+// Check if running as CLI
+if (import.meta.url === `file://${process.argv[1]}`) {
+  cli();
 }
