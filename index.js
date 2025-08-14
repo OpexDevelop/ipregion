@@ -19,26 +19,41 @@ if (!existsSync(scriptPath)) {
 }
 
 // Helper function to run the bash script
-async function runScript(args) {
-  try {
-    const { stdout, stderr } = await execFileAsync('bash', [scriptPath, ...args], {
-      maxBuffer: 1024 * 1024
+function runScript(args) {
+  return new Promise((resolve, reject) => {
+    execFile('bash', [scriptPath, ...args], { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        // Replace script path with 'ipregion' command in help output
+        if (args.includes('--help') || args.includes('-h')) {
+          const cleanOutput = stdout.replace(new RegExp(scriptPath, 'g'), 'ipregion');
+          console.log(cleanOutput);
+          process.exit(0);
+        }
+        reject(new Error(`ipregion.sh error: ${error.message}`));
+        return;
+      }
+      
+      // Replace script path with 'ipregion' in help output
+      if (args.includes('--help') || args.includes('-h')) {
+        const cleanOutput = stdout.replace(new RegExp(scriptPath, 'g'), 'ipregion');
+        console.log(cleanOutput);
+        process.exit(0);
+      }
+      
+      // For JSON output, parse and return
+      if (args.includes('--json') || args.includes('-j')) {
+        try {
+          resolve(JSON.parse(stdout));
+        } catch (parseError) {
+          reject(new Error(`Failed to parse JSON output: ${parseError.message}`));
+        }
+      } else {
+        // For regular output, just print it
+        console.log(stdout);
+        process.exit(0);
+      }
     });
-    
-    if (stderr) {
-      console.error('Warning:', stderr);
-    }
-    
-    // Try to parse JSON output
-    try {
-      return JSON.parse(stdout);
-    } catch {
-      // If not JSON, return raw output
-      return stdout;
-    }
-  } catch (error) {
-    throw new Error(`ipregion.sh error: ${error.message}`);
-  }
+  });
 }
 
 // Main function for programmatic usage
