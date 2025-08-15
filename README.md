@@ -178,7 +178,7 @@ The script outputs country codes in ISO 3166-1 alpha-2 format (e.g., RU, US, DE)
 
 ## Notes
 
-- The `ipregion.sh` script must be present in the package root
+- The `ipregion.sh` in CLI mode is updated automatically. When imported as a module, a permanent script built into the module is used, which can only be updated in another version of the module.
 - This package works only on Unix-like systems (Linux, macOS, BSD)
 - Windows is not supported due to bash dependency
 - The `mostLikelyCountry` field is calculated based on the most frequently appearing country code across all services
