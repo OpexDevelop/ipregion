@@ -13,6 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Download ipregion.sh
+        run: |
+          echo "📥 Downloading ipregion.sh..."
+          curl -fsSL https://raw.githubusercontent.com/vernette/ipregion/refs/heads/master/ipregion.sh -o ipregion.sh
+          echo "✅ File downloaded successfully"
+          ls -la ipregion.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
